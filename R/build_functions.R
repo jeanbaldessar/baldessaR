@@ -172,10 +172,14 @@ montaDocumento <- function(sessoes, substituicoesLinks, substituicoesGeral){
   
 }
 
+#' @export
+
 gerarDocumentos <- function(arquivoPandoc, profile='complete'){
   gerarDocumentosLeves(arquivoPandoc, profile)
   gerarPdf(arquivoPandoc, profile)
 }
+
+#' @export
 
 gerarDocumentosLeves <- function(arquivoPandoc, profile='complete'){
   library(rmarkdown)
@@ -200,6 +204,8 @@ gerarDocumentosLeves <- function(arquivoPandoc, profile='complete'){
   render(fonte, output_file=paste0(destino, '.epub'), output_format='bookdown::epub_book', params = list(profile=profile), output_dir = pasta_destino)
 }
 
+#' @export
+
 gerarPdf <- function(arquivoPandoc, profile='complete'){
   library(rmarkdown)
   fonte <- paste0(arquivoPandoc, '.Rmd')
@@ -209,6 +215,7 @@ gerarPdf <- function(arquivoPandoc, profile='complete'){
   
 }
 
+#' @export
 
 excluirDocumentos <- function(arquivoPandoc){
   file.remove(
