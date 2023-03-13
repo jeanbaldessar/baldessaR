@@ -22,23 +22,24 @@ extraiVersaoPom <- function(arquivo){
 
 #substituí links para arquivos que foram incluídos por referências para as sessões do documento
 substituiLInksParaSessoes <- function(texto, sessoes){
-  # percorre lista de títulos existentes para substituir referência para links locais por sessões
+  # percorre lista de títulos existentes para substituir referência de links locais por sessões
+  referenciasEncontradas <- list()
   for (row in 1:nrow(sessoes)) {
     arquivo <- unlist(sessoes[row, "arquivo"])
     
     if(!is.null(arquivo) && !is.null(texto)){
       # Somente o nome do arquivo sem o caminho
       
-      nomeArquivo <- paste0(str_replace_all(arquivo, ".*/", ""), collapse = "")
-      referenciaSessao <- str_to_lower(str_replace_all(nomeArquivo, " ", "-"))
+      nomeArquivo <- nomeArquivo(arquivo)
+      referenciaSessao <- identificadorSessao(nomeArquivo)
       
-      procuraPor <- gsub("(\\W)", "\\\\\\1", str_replace_all(arquivo, " ", "%20"))
+      procuraPor <- escapaExpressaoRegular(str_replace_all(arquivo, " ", "%20"))
       # subtituí link por referência para sessão
+      referenciasEncontradas   <- Filter(length, append(referenciasEncontradas, str_extract_all(texto, paste0("\\[(.*?)\\]\\(", procuraPor, "\\.md\\)"))))
       texto <- str_replace_all(texto, paste0("\\[(.*?)\\]\\(", procuraPor, "\\.md\\)"), paste0("[\\1](#",referenciaSessao,")"))
-      
     }
   }
-  return(texto)
+  return(list(texto=texto, referenciasEncontradas=referenciasEncontradas))
 }
 
 
@@ -48,7 +49,7 @@ substituiLInks <- function(texto, substituicoes){
     original <- paste0(substituicoes[row, "original"])
     substituicao <- paste0(substituicoes[row, "substituicao"])
     
-    procuraPor <- gsub("(\\W)", "\\\\\\1", str_replace_all(original, " ", "%20"))
+    procuraPor <- escapaExpressaoRegular(str_replace_all(original, " ", "%20"))
     substituicaoUrl <- str_replace_all(substituicao, " ", "%20")
     
     # subtituí link por referência para sessão
@@ -59,11 +60,25 @@ substituiLInks <- function(texto, substituicoes){
 
 substituiGeral <- function(texto, substituicoes){
   for (row in 1:nrow(substituicoes)) {
-    original <- gsub("(\\W)", "\\\\\\1", paste0(substituicoes[row, "original"]))
+    original <- escapaExpressaoRegular(paste0(substituicoes[row, "original"]))
     substituicao <- paste0(substituicoes[row, "substituicao"])
     texto <- str_replace_all(texto, original, substituicao)
   }
   return(texto)
+}
+
+escapaExpressaoRegular <- function(texto){
+  gsub("(\\W)", "\\\\\\1", texto)
+}
+
+# Converte título para identificador de sessão de acordo com padrão pandoc
+identificadorSessao <- function(nome){
+  str_to_lower(str_replace_all(nome, " ", "-"))
+}
+
+# Extrai nome do arquivo de um caminho completo
+nomeArquivo <- function(filename){
+  paste0(str_replace_all(filename, ".*/", ""), collapse = "")
 }
 
 # inclui arquivo corrigindo referências
@@ -72,17 +87,20 @@ incluirSessaoDeArquivo <- function(filename, nivel=1, titulo, sessoes, substitui
   linksExternos <- list()
   linksLocais <- list()
   linksLocaisQuebrados <- list()
+  referenciasEncontradas <- list()
   textoGerado <- ""
   
+  # Se o arquivo não exite, é apenas uma sessão de título
   if(is.null(filename)){
     textoGerado <- paste0("\n\n", paste0(rep("#",nivel), collapse = ""), " ", titulo, "\n\n", collapse = "")
   }else{
-    nomeArquivo <- paste0(str_replace_all(filename, ".*/", ""), collapse = "")
+    nomeArquivo <- nomeArquivo(filename)
     if(is.null(titulo)){
-      # separa título e pasta
+      # se não tiver um título selecionado usa o nome do arquivo
       titulo <- nomeArquivo
     }
-    referenciaSessao <- str_to_lower(str_replace_all(nomeArquivo, " ", "-"))
+    # A referência para a sessão é baseada no nome do arquivo, não no título
+    referenciaSessao <- identificadorSessao(nomeArquivo)
     pasta <- dirname(filename)
     
     # le conteúdo do arquivo
@@ -105,7 +123,9 @@ incluirSessaoDeArquivo <- function(filename, nivel=1, titulo, sessoes, substitui
     
     
     # altera links locais para sessões que foram incluídas na lista de sessões
-    res <- substituiLInksParaSessoes(res, sessoes)
+    susbstituicoesSessoes <- substituiLInksParaSessoes(res, sessoes)
+    res <- susbstituicoesSessoes$texto
+    referenciasEncontradas <- susbstituicoesSessoes$referenciasEncontradas
     # altera outros links locais de acordo com lista de substituições
     res <- substituiLInks(res, substituicoesLinks)
     
@@ -135,13 +155,18 @@ incluirSessaoDeArquivo <- function(filename, nivel=1, titulo, sessoes, substitui
     textoArquivo <- paste0(res, collapse = "\n")
     textoGerado <- paste0(textoTitulo, textoArquivo, collapse = "")
   }
-  return(list(textoGerado=textoGerado, linksExternos=linksExternos, linksLocais=linksLocais, linksLocaisQuebrados=linksLocaisQuebrados))
+  return(list(textoGerado=textoGerado, linksExternos=linksExternos, linksLocais=linksLocais, linksLocaisQuebrados=linksLocaisQuebrados, referenciasEncontradas=referenciasEncontradas))
 }
  
 #' Monta documentos
 #' @export
 
 montaDocumento <- function(sessoes, substituicoesLinks, substituicoesGeral){
+  
+  # Essa estrutura será retornada para verificação das referências
+  sessoesRetornadas <- sessoes %>% filter(nivel==-1) %>% add_column(referencias=list())
+
+  
   # Links que não foram substituídos para verificação
   linksExternos <- list()
   linksLocais <- list()
@@ -158,6 +183,17 @@ montaDocumento <- function(sessoes, substituicoesLinks, substituicoesGeral){
 
     retorno <- incluirSessaoDeArquivo(filename=arquivo, nivel=nivel, titulo=titulo, sessoes, substituicoesLinks, substituicoesGeral)
 
+    
+    referencias=retorno$referenciasEncontradas
+
+    sessoesRetornadas <- sessoesRetornadas %>% 
+      rbind(
+        tribble(
+          ~nivel, ~titulo, ~arquivo, ~referencias,
+          arquivo, nivel, titulo, referencias
+        )
+      )
+    
     linksExternos         <- Filter(length, append(linksExternos         , retorno$linksExternos       ))
     linksLocais           <- Filter(length, append(linksLocais           , retorno$linksLocais         ))
     linksLocaisQuebrados  <- Filter(length, append(linksLocaisQuebrados  , retorno$linksLocaisQuebrados))
@@ -168,7 +204,7 @@ montaDocumento <- function(sessoes, substituicoesLinks, substituicoesGeral){
     
   }
   
-  return(list(textoGerado=textoGerado, linksExternos=linksExternos, linksLocais=linksLocais, linksLocaisQuebrados=linksLocaisQuebrados))
+  return(list(sessoes=sessoesRetornadas, textoGerado=textoGerado, linksExternos=linksExternos, linksLocais=linksLocais, linksLocaisQuebrados=linksLocaisQuebrados))
   
 }
 
