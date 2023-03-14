@@ -1,27 +1,9 @@
 # Este script define algumas funções para trabalhar com a montagem de documentos
 
-# library(tidyverse)
-extraiUltimoCommit <- function(diretorio='.'){
-  library(git2r)
-  repo <- repository(diretorio)
-  last_commit <- head(commits(repo))[[1]]
-  hash <- last_commit$sha
-  commit_date <- format(as.POSIXct(last_commit$author$when$time, origin="1970-01-01"),"%d/%m/%Y %H:%M")
-  return(list(hash=hash, data=commit_date))
-}
-
-extraiVersaoPom <- function(arquivo){
-  library(xml2)
+#' substituí links para arquivos que foram incluídos por referências para as sessões do documento
+substituiLinksParaSessoes <- function(texto, sessoes){
+  library(stringi)
   
-  x <- read_xml(arquivo)
-  versao <- xml_find_all(x, ".//d1:version", xml_ns(x))[1]
-  texto <- xml_text(versao[[1]])
-  
-  return(texto)
-}
-
-#substituí links para arquivos que foram incluídos por referências para as sessões do documento
-substituiLInksParaSessoes <- function(texto, sessoes){
   # percorre lista de títulos existentes para substituir referência de links locais por sessões
   referenciasEncontradas <- list()
   for (row in 1:nrow(sessoes)) {
@@ -34,15 +16,18 @@ substituiLInksParaSessoes <- function(texto, sessoes){
       referenciaSessao <- identificadorSessao(nomeArquivo)
       
       procuraPor <- escapaExpressaoRegular(str_replace_all(arquivo, " ", "%20"))
+      procurarPorCompleto <- paste0("\\[([\\w%/._-]*?)\\]\\(", procuraPor, "\\.md\\)")
+      extractAll <- str_extract_all(texto, procurarPorCompleto)
+      
       # subtituí link por referência para sessão
-      referenciasEncontradas   <- Filter(length, append(referenciasEncontradas, str_extract_all(texto, paste0("\\[(.*?)\\]\\(", procuraPor, "\\.md\\)"))))
-      texto <- str_replace_all(texto, paste0("\\[(.*?)\\]\\(", procuraPor, "\\.md\\)"), paste0("[\\1](#",referenciaSessao,")"))
+      referenciasEncontradas   <- paste(unlist(Filter(length, append(referenciasEncontradas, extractAll))),collapse="\n")
+      texto <- str_replace_all(texto, paste0("\\[([\\w%/._-]*?)\\]\\(", procuraPor, "\\.md\\)"), paste0("[\\1](#",referenciaSessao,")"))
     }
   }
   return(list(texto=texto, referenciasEncontradas=referenciasEncontradas))
 }
 
-
+#' substituí links
 substituiLInks <- function(texto, substituicoes){
   # percorre lista de títulos existentes para substituir referência para links locais por sessões
   for (row in 1:nrow(substituicoes)) {
@@ -105,9 +90,12 @@ incluirSessaoDeArquivo <- function(filename, nivel=1, titulo, sessoes, substitui
     
     # le conteúdo do arquivo
     res <- readLines(str_c(c(filename, ".md"), collapse = ""), encoding = "UTF-8")
+    res <- paste(res, collapse = "\n")
+    
+    
     if(length(pasta)>0 & pasta != "."){
       # adiciona pasta em imagens
-      res <- str_replace_all(res, "!\\[(.*?)\\]\\((.*?)\\)", paste0("![\\1](", pasta,"/\\2)"))
+      res <- str_replace_all(res, "!\\[(.*?)\\]\\(([\\w%/.-]*?)\\)", paste0("![\\1](", pasta,"/\\2)"))
       # adiciona pasta em links para arquivos md
       res <- str_replace_all(res, "\\[(.+?)\\]\\(([\\w%/.-]*?)\\.md\\)", paste0("[\\1](", pasta,"/\\2.md)"))
       
@@ -119,11 +107,11 @@ incluirSessaoDeArquivo <- function(filename, nivel=1, titulo, sessoes, substitui
     res <- str_replace_all(res, "\\[(.+?)\\]\\((.*?/)?\\w*?/../(.*?)\\.md\\)", paste0("[\\1](\\2\\3.md)"))
     res <- str_replace_all(res, "\\[(.+?)\\]\\((.*?/)?\\w*?/../(.*?)\\.md\\)", paste0("[\\1](\\2\\3.md)"))
     
-    
+   
     
     
     # altera links locais para sessões que foram incluídas na lista de sessões
-    susbstituicoesSessoes <- substituiLInksParaSessoes(res, sessoes)
+    susbstituicoesSessoes <- substituiLinksParaSessoes(res, sessoes)
     res <- susbstituicoesSessoes$texto
     referenciasEncontradas <- susbstituicoesSessoes$referenciasEncontradas
     # altera outros links locais de acordo com lista de substituições
@@ -132,20 +120,20 @@ incluirSessaoDeArquivo <- function(filename, nivel=1, titulo, sessoes, substitui
     res <- substituiGeral(res, substituicoesGeral)
     
     # extrai links que não foram substituídos para conferência
-    linksExternos <- Filter(length, append(list(), str_extract_all(res,  "\\[(.+?)\\]\\((https://|http://|www).*?\\)")))
-    linksLocais   <- Filter(length, append(list(), str_extract_all(res,  "\\[(.+?)\\]\\(.*?\\.md\\)")))
+    linksExternos <- Filter(length, append(list(), str_extract_all(res,  "\\[([\\w%/._-]+?)\\]\\((https://|http://|www)[\\w%/.-]*?\\)")))
+    linksLocais   <- Filter(length, append(list(), str_extract_all(res,  "\\[([\\w%/._-]+?)\\]\\([\\w%/.-]*?\\.md\\)")))
     
     if(length(linksLocais)>0){
-      links_existentes <- linksLocais[sapply(gsub("%20", " ",gsub("\\[.+?\\]\\((.*?\\.md)\\)", "\\1", linksLocais)), file.exists)]
-      links_nao_existentes <- linksLocais[!sapply(gsub("%20", " ",gsub("\\[.+?\\]\\((.*?\\.md)\\)", "\\1", linksLocais)), file.exists)]
+      links_existentes <- linksLocais[sapply(gsub("%20", " ",gsub("\\[[\\w%/.-]+?\\]\\(([\\w%/.-]*?\\.md)\\)", "\\1", linksLocais)), file.exists)]
+      links_nao_existentes <- linksLocais[!sapply(gsub("%20", " ",gsub("\\[[\\w%/.-]+?\\]\\(([\\w%/.-]*?\\.md)\\)", "\\1", linksLocais)), file.exists)]
       
-      
+      # browser()
       linksLocais <- links_existentes
       linksLocaisQuebrados <- links_nao_existentes
     }
      
     # remove links locais (quebrados ou não) sem substituição
-    res <- str_replace_all(res, "\\[(.+?)\\]\\((.*?)\\.md\\)", "\\1")
+    res <- str_replace_all(res, "\\[([\\w%/._-]+?)\\]\\(([\\w%/.-]*?)\\.md\\)", "\\1")
     
     # imprime título com nível configurado
     textoTitulo <- paste0("\n\n", paste0(rep("#",nivel), collapse = ""), " ", titulo, " {#", referenciaSessao,"}\n\n", collapse = "")
@@ -164,7 +152,9 @@ incluirSessaoDeArquivo <- function(filename, nivel=1, titulo, sessoes, substitui
 montaDocumento <- function(sessoes, substituicoesLinks, substituicoesGeral){
   
   # Essa estrutura será retornada para verificação das referências
-  sessoesRetornadas <- sessoes %>% filter(nivel==-1) %>% add_column(referencias=list())
+  sessoesRetornadas <- sessoes %>% filter(nivel==-1) %>% 
+    add_column(referencias=list()) %>% 
+    add_column(textoGerado="")
 
   
   # Links que não foram substituídos para verificação
@@ -184,13 +174,11 @@ montaDocumento <- function(sessoes, substituicoesLinks, substituicoesGeral){
     retorno <- incluirSessaoDeArquivo(filename=arquivo, nivel=nivel, titulo=titulo, sessoes, substituicoesLinks, substituicoesGeral)
 
     
-    referencias=retorno$referenciasEncontradas
-
     sessoesRetornadas <- sessoesRetornadas %>% 
       rbind(
         tribble(
-          ~nivel, ~titulo, ~arquivo, ~referencias,
-          arquivo, nivel, titulo, referencias
+          ~nivel, ~titulo, ~arquivo, ~referencias, ~textoGerado,
+          nivel, titulo, arquivo, retorno$referenciasEncontradas, retorno$textoGerado
         )
       )
     
