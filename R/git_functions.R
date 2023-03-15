@@ -1,3 +1,5 @@
+#' Extrai hash e data do último commit do repositório do diretório indicado
+#' @export
 extraiUltimoCommit <- function(diretorio='.'){
   library(git2r)
   repo <- repository(diretorio)
