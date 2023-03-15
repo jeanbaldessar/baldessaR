@@ -52,16 +52,21 @@ substituiGeral <- function(texto, substituicoes){
   return(texto)
 }
 
+#' Escapa uma expressão regular para facilitar a busca pela string literal
+#' @export
 escapaExpressaoRegular <- function(texto){
   gsub("(\\W)", "\\\\\\1", texto)
 }
 
-# Converte título para identificador de sessão de acordo com padrão pandoc
+#' Converte título para identificador de sessão de acordo com padrão pandoc
+#' @export
 identificadorSessao <- function(nome){
   str_to_lower(str_replace_all(nome, " ", "-"))
 }
 
-# Extrai nome do arquivo de um caminho completo
+#' Extrai nome do arquivo de um caminho completo
+#' removendo todo o texto até a última barra (/)
+#' @export
 nomeArquivo <- function(filename){
   paste0(str_replace_all(filename, ".*/", ""), collapse = "")
 }
