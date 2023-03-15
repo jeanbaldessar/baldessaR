@@ -16,12 +16,12 @@ substituiLinksParaSessoes <- function(texto, sessoes){
       referenciaSessao <- identificadorSessao(nomeArquivo)
       
       procuraPor <- escapaExpressaoRegular(str_replace_all(arquivo, " ", "%20"))
-      procurarPorCompleto <- paste0("\\[([\\w%/._-]*?)\\]\\(", procuraPor, "\\.md\\)")
+      procurarPorCompleto <- paste0("\\[([\\w%/._ -]*?)\\]\\(", procuraPor, "\\.md\\)")
       extractAll <- str_extract_all(texto, procurarPorCompleto)
       
       # subtituí link por referência para sessão
       referenciasEncontradas   <- paste(unlist(Filter(length, append(referenciasEncontradas, extractAll))),collapse="\n")
-      texto <- str_replace_all(texto, paste0("\\[([\\w%/._-]*?)\\]\\(", procuraPor, "\\.md\\)"), paste0("[\\1](#",referenciaSessao,")"))
+      texto <- str_replace_all(texto, paste0("\\[([\\w%/._ -]*?)\\]\\(", procuraPor, "\\.md\\)"), paste0("[\\1](#",referenciaSessao,")"))
     }
   }
   return(list(texto=texto, referenciasEncontradas=referenciasEncontradas))
@@ -120,8 +120,8 @@ incluirSessaoDeArquivo <- function(filename, nivel=1, titulo, sessoes, substitui
     res <- substituiGeral(res, substituicoesGeral)
     
     # extrai links que não foram substituídos para conferência
-    linksExternos <- Filter(length, append(list(), str_extract_all(res,  "\\[([\\w%/._-]+?)\\]\\((https://|http://|www)[\\w%/.-]*?\\)")))
-    linksLocais   <- Filter(length, append(list(), str_extract_all(res,  "\\[([\\w%/._-]+?)\\]\\([\\w%/.-]*?\\.md\\)")))
+    linksExternos <- Filter(length, append(list(), str_extract_all(res,  "\\[([\\w%/._ -]+?)\\]\\((https://|http://|www)[\\w%/.-]*?\\)")))
+    linksLocais   <- Filter(length, append(list(), str_extract_all(res,  "\\[([\\w%/._ -]+?)\\]\\([\\w%/.-]*?\\.md\\)")))
     
     if(length(linksLocais)>0){
       links_existentes <- linksLocais[sapply(gsub("%20", " ",gsub("\\[[\\w%/.-]+?\\]\\(([\\w%/.-]*?\\.md)\\)", "\\1", linksLocais)), file.exists)]
@@ -133,7 +133,7 @@ incluirSessaoDeArquivo <- function(filename, nivel=1, titulo, sessoes, substitui
     }
      
     # remove links locais (quebrados ou não) sem substituição
-    res <- str_replace_all(res, "\\[([\\w%/._-]+?)\\]\\(([\\w%/.-]*?)\\.md\\)", "\\1")
+    res <- str_replace_all(res, "\\[([\\w%/._ -]+?)\\]\\(([\\w%/.-]*?)\\.md\\)", "\\1")
     
     # imprime título com nível configurado
     textoTitulo <- paste0("\n\n", paste0(rep("#",nivel), collapse = ""), " ", titulo, " {#", referenciaSessao,"}\n\n", collapse = "")
