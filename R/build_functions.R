@@ -201,6 +201,42 @@ montaDocumento <- function(sessoes, substituicoesLinks, substituicoesGeral){
   
 }
 
+#' Imprime estrutura gerada por montaDocumento incluíndo backlinks
+#' @export
+
+imprimirComReferencias <- function(retorno, ignoraReferenciasDe){
+  for (row in 1:nrow(retorno$sessoes)) {
+    cat(retorno$sessoes$textoGerado[row])  
+    
+    
+    teste <- retorno$sessoes %>%
+      filter(!arquivo %in% ignoraReferenciasDe) %>%  # removendo sessões de índices
+      filter(grepl(retorno$sessoes$arquivo[row], referencias ))
+    
+    teste <- teste %>% 
+      arrange(coalesce(paste0(titulo), paste0(nomeArquivo(arquivo))))
+    
+    if(nrow(teste)>0){
+      
+      cat("\n\n\nReferenciado por:\n\n")
+      
+      for (row2 in 1:nrow(teste)) {  
+        arquivo2 <- unlist(teste$arquivo[row2])
+        titulo2 <- unlist(teste$titulo[row2])
+        
+        if(is.null(titulo2)){
+          titulo2 <- nomeArquivo(arquivo2)
+        }
+        
+        cat("- [",titulo2, "](#",arquivo2 %>% nomeArquivo() %>% identificadorSessao(),")\n", sep = "")
+        
+      }
+      cat("\n\n\n")
+    }
+  }
+}
+
+
 #' @export
 
 gerarDocumentos <- function(arquivoPandoc, profile='complete'){
