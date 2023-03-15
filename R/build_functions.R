@@ -15,7 +15,7 @@ substituiLinksParaSessoes <- function(texto, sessoes){
       nomeArquivo <- nomeArquivo(arquivo)
       referenciaSessao <- identificadorSessao(nomeArquivo)
       
-      procuraPor <- escapaExpressaoRegular(str_replace_all(arquivo, " ", "%20"))
+      procuraPor <- escapaExpressaoRegular(escapaEspacos(arquivo))
       procurarPorCompleto <- paste0("\\[([\\w%/._ -]*?)\\]\\(", procuraPor, "\\.md\\)")
       extractAll <- str_extract_all(texto, procurarPorCompleto)
       
@@ -34,8 +34,8 @@ substituiLInks <- function(texto, substituicoes){
     original <- paste0(substituicoes[row, "original"])
     substituicao <- paste0(substituicoes[row, "substituicao"])
     
-    procuraPor <- escapaExpressaoRegular(str_replace_all(original, " ", "%20"))
-    substituicaoUrl <- str_replace_all(substituicao, " ", "%20")
+    procuraPor <- escapaExpressaoRegular(escapaEspacos(original))
+    substituicaoUrl <- escapaEspacos(substituicao)
     
     # subtituí link por referência para sessão
     texto <- str_replace_all(texto, paste0("\\[(.*?)\\]\\(", procuraPor, "\\)"), paste0("[\\1](",substituicaoUrl,")"))
@@ -50,6 +50,11 @@ substituiGeral <- function(texto, substituicoes){
     texto <- str_replace_all(texto, original, substituicao)
   }
   return(texto)
+}
+
+
+escapaEspacos <- function(texto){
+  str_replace_all(texto, " ", "%20")
 }
 
 #' Escapa uma expressão regular para facilitar a busca pela string literal
@@ -211,7 +216,7 @@ imprimirComReferencias <- function(retorno, ignoraReferenciasDe){
     
     teste <- retorno$sessoes %>%
       filter(!arquivo %in% ignoraReferenciasDe) %>%  # removendo sessões de índices
-      filter(grepl(retorno$sessoes$arquivo[row], referencias ))
+      filter(grepl(escapaEspacos(retorno$sessoes$arquivo[row]), referencias ))
     
     teste <- teste %>% 
       arrange(coalesce(paste0(titulo), paste0(nomeArquivo(arquivo))))
