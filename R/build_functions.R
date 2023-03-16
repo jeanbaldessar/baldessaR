@@ -16,12 +16,12 @@ substituiLinksParaSessoes <- function(texto, sessoes){
       referenciaSessao <- identificadorSessao(nomeArquivo)
       
       procuraPor <- escapaExpressaoRegular(escapaEspacos(arquivo))
-      procurarPorCompleto <- paste0("\\[([([\\w%/._ -\\(\\)]*?)\\]\\(", procuraPor, "\\.md\\)")
+      procurarPorCompleto <- paste0("\\[([\\w%/._ ()-]*?)\\]\\(", procuraPor, "\\.md\\)")
       extractAll <- str_extract_all(texto, procurarPorCompleto)
       
       # subtituí link por referência para sessão
       referenciasEncontradas   <- paste(unlist(Filter(length, append(referenciasEncontradas, extractAll))),collapse="\n")
-      texto <- str_replace_all(texto, paste0("\\[([([\\w%/._ -\\(\\)]*?)\\]\\(", procuraPor, "\\.md\\)"), paste0("[\\1](#",referenciaSessao,")"))
+      texto <- str_replace_all(texto, paste0("\\[([\\w%/._ ()-]*?)\\]\\(", procuraPor, "\\.md\\)"), paste0("[\\1](#",referenciaSessao,")"))
     }
   }
   return(list(texto=texto, referenciasEncontradas=referenciasEncontradas))
@@ -105,9 +105,9 @@ incluirSessaoDeArquivo <- function(filename, nivel=1, titulo, sessoes, substitui
     
     if(length(pasta)>0 & pasta != "."){
       # adiciona pasta em imagens
-      res <- str_replace_all(res, "!\\[([\\w%/._ -\\(\\)]*?)\\]\\(([([\\w%/._-\\(\\)]*?)\\)", paste0("![\\1](", pasta,"/\\2)"))
+      res <- str_replace_all(res, "!\\[([\\w%/._ ()-]*?)\\]\\(([\\w%/._-]*?)\\)", paste0("![\\1](", pasta,"/\\2)"))
       # adiciona pasta em links para arquivos md
-      res <- str_replace_all(res, "\\[([\\w%/._ -\\(\\)]+?)\\]\\(([([\\w%/._-\\(\\)]*?)\\.md\\)", paste0("[\\1](", pasta,"/\\2.md)"))
+      res <- str_replace_all(res, "\\[([\\w%/._ ()-]+?)\\]\\(([\\w%/._-]*?)\\.md\\)", paste0("[\\1](", pasta,"/\\2.md)"))
       
     }
     
@@ -130,12 +130,12 @@ incluirSessaoDeArquivo <- function(filename, nivel=1, titulo, sessoes, substitui
     res <- substituiGeral(res, substituicoesGeral)
     
     # extrai links que não foram substituídos para conferência
-    linksExternos <- Filter(length, append(list(), str_extract_all(res,  "\\[([([\\w%/._ -\\(\\)]+?)\\]\\((https://|http://|www)[([\\w%/._-\\(\\)]*?\\)")))
-    linksLocais   <- Filter(length, append(list(), str_extract_all(res,  "\\[([([\\w%/._ -\\(\\)]+?)\\]\\([([\\w%/._-\\(\\)]*?\\.md\\)")))
+    linksExternos <- Filter(length, append(list(), str_extract_all(res,  "\\[([\\w%/._ ()-]+?)\\]\\((https://|http://|www)[\\w%/.-]*?\\)")))
+    linksLocais   <- Filter(length, append(list(), str_extract_all(res,  "\\[([\\w%/._ ()-]+?)\\]\\([\\w%/._-]*?\\.md\\)")))
     
     if(length(linksLocais)>0){
-      links_existentes <- linksLocais[sapply(gsub("%20", " ",gsub("\\[[([\\w%/._ -\\(\\)]+?\\]\\(([([\\w%/._-\\(\\)]*?\\.md)\\)", "\\1", linksLocais)), file.exists)]
-      links_nao_existentes <- linksLocais[!sapply(gsub("%20", " ",gsub("\\[[([\\w%/._ -\\(\\)]+?\\]\\(([([\\w%/._-\\(\\)]*?\\.md)\\)", "\\1", linksLocais)), file.exists)]
+      links_existentes 		<- linksLocais[ sapply(gsub("%20", " ",gsub("\\[[\\w%/._ ()-]+?\\]\\(([\\w%/._-]*?\\.md)\\)", "\\1", linksLocais)), file.exists)]
+      links_nao_existentes 	<- linksLocais[!sapply(gsub("%20", " ",gsub("\\[[\\w%/._ ()-]+?\\]\\(([\\w%/._-]*?\\.md)\\)", "\\1", linksLocais)), file.exists)]
       
       # browser()
       linksLocais <- links_existentes
@@ -143,7 +143,7 @@ incluirSessaoDeArquivo <- function(filename, nivel=1, titulo, sessoes, substitui
     }
      
     # remove links locais (quebrados ou não) sem substituição
-    res <- str_replace_all(res, "\\[([\\w%/._ -\\(\\)]+?)\\]\\(([([\\w%/._-\\(\\)]*?)\\.md\\)", "\\1")
+    res <- str_replace_all(res, "\\[([\\w%/._ ()-]+?)\\]\\(([\\w%/._()-]*?)\\.md\\)", "\\1")
     
     # imprime título com nível configurado
     textoTitulo <- paste0("\n\n", paste0(rep("#",nivel), collapse = ""), " ", titulo, " {#", referenciaSessao,"}\n\n", collapse = "")
