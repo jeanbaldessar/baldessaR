@@ -66,7 +66,10 @@ escapaExpressaoRegular <- function(texto){
 #' Converte título para identificador de sessão de acordo com padrão pandoc
 #' @export
 identificadorSessao <- function(nome){
-  str_to_lower(str_replace_all(nome, " ", "-"))
+  nome %>% 
+    str_to_lower() %>% 
+    str_replace_all(" ", "-") %>% 
+    str_replace_all("\\(|\\)", "")
 }
 
 #' Extrai nome do arquivo de um caminho completo
