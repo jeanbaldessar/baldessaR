@@ -216,10 +216,12 @@ imprimirComReferencias <- function(retorno, ignoraReferenciasDe){
   for (row in 1:nrow(retorno$sessoes)) {
     cat(retorno$sessoes$textoGerado[row])  
     
+    arquivoAtual <- retorno$sessoes$arquivo[row]
+    arquivoAtualEscapacdo <- escapaEspacos(arquivoAtual)
     
     teste <- retorno$sessoes %>%
       filter(!arquivo %in% ignoraReferenciasDe) %>%  # removendo sessões de índices
-      filter(grepl(escapaEspacos(retorno$sessoes$arquivo[row]), referencias ))
+      filter(grepl(escapaExpressaoRegular(arquivoAtualEscapacdo), referencias ))
     
     teste <- teste %>% 
       arrange(coalesce(paste0(titulo), paste0(nomeArquivo(arquivo))))
