@@ -1,3 +1,5 @@
+#' Extrai versão de um arquivo pom (maven)
+#' @export
 extraiVersaoPom <- function(arquivo){
   library(xml2)
   
