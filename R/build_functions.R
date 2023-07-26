@@ -281,12 +281,21 @@ gerarDocumentosLeves <- function(arquivoPandoc, profile='complete'){
 
 #' @export
 
-gerarPdf <- function(arquivoPandoc, profile='complete'){
+gerarPdf <- function(arquivo, profile='complete', pasta_destino=NULL){
   library(rmarkdown)
-  fonte <- paste0(arquivoPandoc, '.Rmd')
-  destino <- paste0(arquivoPandoc)
-  pasta_destino <- paste0('build_', profile)
-  render(fonte, output_file=paste0(destino, '.pdf'), output_format='bookdown::pdf_book', params = list(profile=profile), output_dir = pasta_destino)
+  fonte <- paste0(arquivo, '.Rmd')
+  destino <- paste0(arquivo)
+  
+  if(is.null(pasta_destino)){
+    pasta_destino <- paste0('build_', profile)  
+  }
+  
+  render(fonte, 
+         output_file=paste0(destino, '.pdf'), 
+         output_format='bookdown::pdf_book', 
+         params = list(profile=profile), 
+         output_dir = pasta_destino
+         )
   
 }
 
