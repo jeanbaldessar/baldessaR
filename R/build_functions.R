@@ -249,58 +249,74 @@ imprimirComReferencias <- function(retorno, ignoraReferenciasDe){
 
 #' @export
 
-gerarDocumentos <- function(arquivoPandoc, profile='complete'){
-  gerarDocumentosLeves(arquivoPandoc, profile)
-  gerarPdf(arquivoPandoc, profile)
+gerarDocumentos <- function(arquivoPandoc, profile='complete', pasta_destino='build'){
+  gerarDocumentosLeves(arquivoPandoc, profile, pasta_destino)
+  gerarPdf(arquivoPandoc, profile, pasta_destino)
+}
+
+
+# cria o diretório destino se não existe ainda
+createDir <- function(dir_name){
+  if(!dir.exists(dir_name)){
+    dir.create(dir_name, recursive = TRUE)
+  }
 }
 
 #' @export
 
-gerarDocumentosLeves <- function(arquivoPandoc, profile='complete'){
+gerarDocumentosLeves <- function(arquivo, profile='complete', pasta_destino='build'){
   library(rmarkdown)
   
-  fonte <- paste0(arquivoPandoc, '.Rmd')
-  destino <- paste0(arquivoPandoc)
-  pasta_destino <- paste0('build_', profile)
+  fonte <- paste0(arquivo, '.Rmd')
+  destino <- paste0(arquivo)
+  diretorio_destino <- paste0(pasta_destino,'/',profile)
   
-  render(fonte, output_file=paste0(destino, '.md'), output_format='md_document', params = list(profile=profile), output_dir = pasta_destino)
-  pandoc_convert(paste0(destino, '.md'), output=paste0(destino, '.xwiki'), to='xwiki', wd=pasta_destino)
-  arquivoWiki <- readLines(paste0(pasta_destino, '/', destino, '.xwiki'))
+  createDir(diretorio_destino)
+  
+  # Gera documento markdown que servirá de base para o xwiki
+  render(fonte, output_file=paste0(destino, '.md'), output_format='md_document', params = list(profile=profile), output_dir = diretorio_destino)
+  
+  # Gera xwiki a partir do markdown
+  pandoc_convert(paste0(destino, '.md'), output=paste0(destino, '.xwiki'), to='xwiki', wd=diretorio_destino)
+  arquivoWiki <- readLines(paste0(diretorio_destino, '/', destino, '.xwiki'))
   
   arquivoWiki <- paste0('{{toc numbered="true"/}}\n\n', paste0(arquivoWiki, collapse = '\n'), collapse = '')
   # corrigindo sintaxe errada de links
   arquivoWiki <- str_replace_all(arquivoWiki, '>>#(.*?)\\]', '>>||anchor=\\1]')
   # removendo subpasta para imagens
   arquivoWiki <- str_replace_all(arquivoWiki, '\\[\\[image:.*/(.*?)\\]\\]', '[[image:\\1]]')
-  writeLines(arquivoWiki, paste0(pasta_destino, '/', destino, '.xwiki'))
+  writeLines(arquivoWiki, paste0(diretorio_destino, '/', destino, '.xwiki'))
   
-  render(fonte, output_file=paste0(destino, '-github.html'), output_format='bookdown::gitbook', params = list(profile=profile), output_dir = pasta_destino)
-  render(fonte, output_file=paste0(destino, '.html'), output_format='html_document', params = list(profile=profile), output_dir = pasta_destino)
-  render(fonte, output_file=paste0(destino, '.epub'), output_format='bookdown::epub_book', params = list(profile=profile), output_dir = pasta_destino)
+  render(fonte, output_file=paste0(destino, '-github.html'), output_format='bookdown::gitbook', params = list(profile=profile))
+  file.rename(paste0(destino, '-github.html'), paste0(diretorio_destino,'/', destino, '-github.html'))
+  render(fonte, output_file=paste0(destino, '.html'), output_format='html_document', params = list(profile=profile))
+  file.rename(paste0(destino, '.html'), paste0(diretorio_destino,'/', destino, '.html'))
+  render(fonte, output_file=paste0(destino, '.epub'), output_format='bookdown::epub_book', params = list(profile=profile))
+  file.rename(paste0(destino, '.epub'), paste0(diretorio_destino,'/', destino, '.epub'))
 }
 
 #' @export
-
-gerarPdf <- function(arquivo, profile='complete', pasta_destino=NULL){
-  library(rmarkdown)
+# Método feito para facilitar a renderização de um documento para pdf por linha de comando
+# Este método chama rmarkdown::render com o formato bookdown::pdf_book o salva os documentos resultantes em uma pasta padrão
+gerarPdf <- function(arquivo, profile='complete', pasta_destino='build'){
   fonte <- paste0(arquivo, '.Rmd')
-  destino <- paste0(arquivo)
+  destino <- paste0(arquivo, '.pdf')
+  diretorio_destino <- paste0(pasta_destino,'/',profile)
   
-  if(is.null(pasta_destino)){
-    pasta_destino <- paste0('build_', profile)  
-  }
-  
-  render(fonte, 
-         output_file=paste0(destino, '.pdf'), 
+  rmarkdown::render(fonte, 
+         output_file=destino, 
          output_format='bookdown::pdf_book', 
-         params = list(profile=profile), 
-         output_dir = pasta_destino
+         params = list(profile=profile)
          )
   
+  createDir(diretorio_destino)
+  
+  # move o arquivo para o diretório destino
+  file.rename(destino, to = paste0(diretorio_destino,'/',destino))
 }
 
 #' @export
-
+# Deprecated. Agora que os arquivos são gerados dentro de uma pasta esse método não se faz necessário
 excluirDocumentos <- function(arquivoPandoc){
   file.remove(
     paste0(arquivoPandoc, '.md'), 
