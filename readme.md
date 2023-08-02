@@ -19,3 +19,9 @@ devtools::install("baldessaR")
 setwd(tmpDir)
 rm(tmpDir)
 ```
+
+Depois de instalar a biblioteca você pode fazer um build de um arquivo Rmd através do comando abaixo:
+
+```r
+baldessaR::renderAll('arquivo')
+```
