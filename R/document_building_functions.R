@@ -6,8 +6,7 @@ replaceSessionLinks <- function(texto, sessoes){
 
   # percorre lista de títulos existentes para substituir referência de links locais por sessões
   referenciasEncontradas <- list()
-  for (row in 1:nrow(sessoes)) {
-    arquivo <- unlist(sessoes[row, "arquivo"])
+  for (arquivo in sessoes) {
 
     if(!is.null(arquivo) && !is.null(texto)){
       # Somente o nome do arquivo sem o caminho
@@ -18,9 +17,10 @@ replaceSessionLinks <- function(texto, sessoes){
       procuraPor <- escapeRegexp(escapeEspaces(arquivo))
       procurarPorCompleto <- paste0("\\[([\\w%/._(),‘’'+ -]*?)\\]\\(", procuraPor, "\\.md\\)")
       extractAll <- str_extract_all(texto, procurarPorCompleto)
+      # guarda referências encontradas para permitir a criação de backlinks posteriormente
+      referenciasEncontradas   <- paste(unlist(Filter(length, append(referenciasEncontradas, extractAll))),collapse="\n")
 
       # subtituí link por referência para sessão
-      referenciasEncontradas   <- paste(unlist(Filter(length, append(referenciasEncontradas, extractAll))),collapse="\n")
       texto <- str_replace_all(texto, paste0("\\[([\\w%/._(),‘’'+ -]*?)\\]\\(", procuraPor, "\\.md\\)"), paste0("[\\1](#",referenciaSessao,")"))
     }
   }
@@ -29,6 +29,10 @@ replaceSessionLinks <- function(texto, sessoes){
 
 #' substituí links
 replaceLinks <- function(texto, substituicoes){
+  # se não veio nada para sustituir retornar o texto normal
+  if(is.null(substituicoes))
+    return(texto)
+
   # percorre lista de títulos existentes para substituir referência para links locais por sessões
   for (row in 1:nrow(substituicoes)) {
     original <- paste0(substituicoes[row, "original"])
@@ -44,6 +48,10 @@ replaceLinks <- function(texto, substituicoes){
 }
 
 replaceList <- function(texto, substituicoes){
+  # se não veio nada para sustituir retornar o texto normal
+  if(is.null(substituicoes))
+    return(texto)
+
   for (row in 1:nrow(substituicoes)) {
     original <- escapeRegexp(paste0(substituicoes[row, "original"]))
     substituicao <- paste0(substituicoes[row, "substituicao"])
@@ -54,7 +62,7 @@ replaceList <- function(texto, substituicoes){
 
 
 # inclui arquivo corrigindo referências
-includeFileSession <- function(filename, nivel=1, titulo, sessoes, substituicoesLinks, substituicoesGeral){
+includeFileSession <- function(filename, nivel=1, titulo, sessoes, substituicoesLinks=NULL, substituicoesGeral=NULL){
 
   linksExternos <- list()
   linksLocais <- list()
@@ -98,7 +106,7 @@ includeFileSession <- function(filename, nivel=1, titulo, sessoes, substituicoes
 
 
     # altera links locais para sessões que foram incluídas na lista de sessões
-    susbstituicoesSessoes <- replaceSessionLinks(res, sessoes)
+    susbstituicoesSessoes <- replaceSessionLinks(res, sessoes$arquivo %>% unlist)
     res <- susbstituicoesSessoes$texto
     referenciasEncontradas <- susbstituicoesSessoes$referenciasEncontradas
     # altera outros links locais de acordo com lista de substituições
@@ -136,7 +144,7 @@ includeFileSession <- function(filename, nivel=1, titulo, sessoes, substituicoes
 #' Monta documentos
 #' @export
 
-buildDocument <- function(sessoes, substituicoesLinks, substituicoesGeral){
+buildDocument <- function(sessoes, substituicoesLinks=NULL, substituicoesGeral=NULL){
 
   # Essa estrutura será retornada para verificação das referências
   sessoesRetornadas <- sessoes %>% filter(nivel==-1) %>%

@@ -4,7 +4,7 @@
 \alias{buildDocument}
 \title{Monta documentos}
 \usage{
-buildDocument(sessoes, substituicoesLinks, substituicoesGeral)
+buildDocument(sessoes, substituicoesLinks = NULL, substituicoesGeral = NULL)
 }
 \description{
 Monta documentos
