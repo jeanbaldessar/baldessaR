@@ -156,15 +156,14 @@ buildDocument <- function(sessoes, substituicoesLinks=NULL, substituicoesGeral=N
   linksExternos <- list()
   linksLocais <- list()
   linksLocaisQuebrados <- list()
-  textoGerado <- ""
 
 
   # incluí todos os arquivos da lista fazendo todas as substituições necessárias
   # pode ser feito 'manualmente' para ter mais controle sobre a estrutura, mas normalmente um for simples vai resolver
   for (row in 1:nrow(sessoes)) {
-    arquivo <- unlist(sessoes[row, "arquivo"])
-    nivel <- unlist(sessoes[row, "nivel"])
-    titulo <- unlist(sessoes[row, "titulo"])
+    arquivo <- sessoes$arquivo[[row]]
+    nivel <- sessoes$nivel[[row]]
+    titulo <- sessoes$titulo[[row]]
 
     retorno <- includeFileSession(filename=arquivo, nivel=nivel, titulo=titulo, sessoes, substituicoesLinks, substituicoesGeral)
 
@@ -180,28 +179,23 @@ buildDocument <- function(sessoes, substituicoesLinks=NULL, substituicoesGeral=N
     linksExternos         <- Filter(length, append(linksExternos         , retorno$linksExternos       ))
     linksLocais           <- Filter(length, append(linksLocais           , retorno$linksLocais         ))
     linksLocaisQuebrados  <- Filter(length, append(linksLocaisQuebrados  , retorno$linksLocaisQuebrados))
-
-    incremento <- retorno$textoGerado
-    anterior <- textoGerado
-    textoGerado <- paste0(anterior, incremento, collapse = "")
-
   }
 
-  return(list(sessoes=sessoesRetornadas, textoGerado=textoGerado, linksExternos=linksExternos, linksLocais=linksLocais, linksLocaisQuebrados=linksLocaisQuebrados))
+  return(list(sessoes=sessoesRetornadas, linksExternos=linksExternos, linksLocais=linksLocais, linksLocaisQuebrados=linksLocaisQuebrados))
 
 }
 
 #' Imprime estrutura gerada por montaDocumento incluíndo backlinks
 #' @export
 
-printWithBacklinks <- function(retorno, ignoraReferenciasDe){
-  for (row in 1:nrow(retorno$sessoes)) {
-    cat(retorno$sessoes$textoGerado[row])
+printWithBacklinks <- function(imprimir, referencias, ignoraReferenciasDe){
+  for (row in 1:nrow(imprimir)) {
+    cat(imprimir$textoGerado[row])
 
-    arquivoAtual <- retorno$sessoes$arquivo[row]
+    arquivoAtual <- imprimir$arquivo[row]
     arquivoAtualEscapacdo <- escapeEspaces(arquivoAtual)
 
-    teste <- retorno$sessoes %>%
+    teste <- referencias %>%
       filter(!arquivo %in% ignoraReferenciasDe) %>%  # removendo sessões de índices
       filter(grepl(escapeRegexp(arquivoAtualEscapacdo), referencias ))
 

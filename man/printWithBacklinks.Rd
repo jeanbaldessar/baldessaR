@@ -4,7 +4,7 @@
 \alias{printWithBacklinks}
 \title{Imprime estrutura gerada por montaDocumento incluíndo backlinks}
 \usage{
-printWithBacklinks(retorno, ignoraReferenciasDe)
+printWithBacklinks(imprimir, referencias, ignoraReferenciasDe)
 }
 \description{
 Imprime estrutura gerada por montaDocumento incluíndo backlinks
