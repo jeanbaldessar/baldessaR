@@ -190,7 +190,21 @@ buildDocument <- function(sessoes, substituicoesLinks=NULL, substituicoesGeral=N
 
 printWithBacklinks <- function(imprimir, referencias, ignoraReferenciasDe){
   for (row in 1:nrow(imprimir)) {
-    cat(imprimir$textoGerado[row])
+    texto_gerado <- imprimir$textoGerado[row]
+
+    plantuml <- str_replace_all(texto_gerado,
+                                regex("```plantuml(.*?)```", dotall = TRUE),
+                                paste0("```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(plantuml)
+teste <- '\\1' %>%
+  plantuml %>%
+  plot
+rm(teste)
+```")
+                                )
+
+    interpreted <- knitr::knit_child(text = plantuml, envir = environment(), quiet = TRUE)
+    cat(interpreted)
 
     arquivoAtual <- imprimir$arquivo[row]
     arquivoAtualEscapacdo <- escapeEspaces(arquivoAtual)
