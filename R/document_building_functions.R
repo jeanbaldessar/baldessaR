@@ -214,7 +214,7 @@ rm(teste)
 
     teste <- referencias %>%
       filter(!arquivo %in% ignoraReferenciasDe) %>%  # removendo sessões de índices
-      filter(grepl(escapeRegexp(arquivoAtualEscapacdo), referencias ))
+      filter(grepl(paste0(escapeRegexp(arquivoAtualEscapacdo),".md"), referencias ))
 
     teste <- teste %>%
       arrange(coalesce(paste0(titulo), paste0(extractFileName(arquivo))))
