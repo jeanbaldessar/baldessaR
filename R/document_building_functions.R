@@ -10,9 +10,7 @@ replaceSessionLinks <- function(texto, sessoes){
 
     if(!is.null(arquivo) && !is.null(texto)){
       # Somente o nome do arquivo sem o caminho
-
-      nomeArquivo <- extractFileName(arquivo)
-      referenciaSessao <- convertToPandocSessionIdentifier(nomeArquivo)
+      referenciaSessao <- convertToPandocSessionIdentifier(arquivo)
 
       procuraPor <- escapeRegexp(escapeEspaces(arquivo))
       procurarPorCompleto <- paste0("\\[([\\w%/._(),‘’'+ -]*?)\\]\\(", procuraPor, "\\.md\\)")
@@ -74,13 +72,16 @@ includeFileSession <- function(filename, nivel=1, titulo, sessoes, substituicoes
   if(is.null(filename)){
     textoGerado <- paste0("\n\n", paste0(rep("#",nivel), collapse = ""), " ", titulo, "\n\n", collapse = "")
   }else{
+    if (!file.exists(paste0(filename,".md"))){
+      stop(paste0("Arquivo ", filename, " não existe"))
+    }
+
     nomeArquivo <- extractFileName(filename)
     if(is.null(titulo)){
       # se não tiver um título selecionado usa o nome do arquivo
       titulo <- nomeArquivo
     }
-    # A referência para a sessão é baseada no nome do arquivo, não no título
-    referenciaSessao <- convertToPandocSessionIdentifier(nomeArquivo)
+
     pasta <- dirname(filename)
 
     # le conteúdo do arquivo
@@ -130,6 +131,8 @@ includeFileSession <- function(filename, nivel=1, titulo, sessoes, substituicoes
     # remove links locais (quebrados ou não) sem substituição
     res <- str_replace_all(res, "\\[([\\w%/._(),‘’'+ -]+?)\\]\\(([\\w%/._(),‘’'+-]*?)\\.md\\)", "\\1")
 
+    # A referência para a sessão é baseada no nome do arquivo, não no título
+    referenciaSessao <- convertToPandocSessionIdentifier(filename)
     # imprime título com nível configurado
     textoTitulo <- paste0("\n\n", paste0(rep("#",nivel), collapse = ""), " ", titulo, " {#", referenciaSessao,"}\n\n", collapse = "")
     # imprime conteúdo com adaptações
@@ -228,7 +231,7 @@ rm(teste)
           titulo2 <- extractFileName(arquivo2)
         }
 
-        cat("- [",titulo2, "](#",arquivo2 %>% extractFileName() %>% convertToPandocSessionIdentifier(),")\n", sep = "")
+        cat("- [",titulo2, "](#",arquivo2 %>% convertToPandocSessionIdentifier(),")\n", sep = "")
 
       }
       cat("\n\n\n")

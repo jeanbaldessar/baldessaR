@@ -13,6 +13,6 @@ escapeRegexp <- function(texto){
 convertToPandocSessionIdentifier <- function(nome){
   nome %>%
     str_to_lower() %>%
-    str_replace_all(" ", "-") %>%
+    str_replace_all(" |/", "-") %>%
     str_replace_all("\\(|\\)", "")
 }
