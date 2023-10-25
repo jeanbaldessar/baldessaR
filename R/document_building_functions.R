@@ -73,7 +73,7 @@ includeFileSession <- function(filename, nivel=1, titulo, sessoes, substituicoes
     textoGerado <- paste0("\n\n", paste0(rep("#",nivel), collapse = ""), " ", titulo, "\n\n", collapse = "")
   }else{
     if (!file.exists(paste0(filename,".md"))){
-      stop(paste0("Arquivo ", filename, " não existe"))
+      stop(paste0("Arquivo '", filename, ".md' não existe"))
     }
 
     nomeArquivo <- extractFileName(filename)
@@ -197,7 +197,7 @@ printWithBacklinks <- function(imprimir, referencias, ignoraReferenciasDe){
 
     plantuml <- str_replace_all(texto_gerado,
                                 regex("```plantuml(.*?)```", dotall = TRUE),
-                                paste0("```{r echo=FALSE, message=FALSE, warning=FALSE}
+                                paste0("```{r echo=FALSE, message=FALSE, warning=FALSE, crop = TRUE}
 library(plantuml)
 teste <- '\\1' %>%
   plantuml %>%
