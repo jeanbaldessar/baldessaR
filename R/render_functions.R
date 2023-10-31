@@ -1,5 +1,8 @@
 #' @export
-renderAll <- function(arquivoPandoc, profile='complete', pasta_destino='build'){
+renderAll <- function(arquivoPandoc=NULL, profile='complete', pasta_destino='build'){
+  if (is.null(arquivoPandoc)){
+    arquivoPandoc <- stringr::str_replace_all(list.files(pattern = "*.Rmd"), ".Rmd$", "")
+  }
   renderLight(arquivoPandoc, profile, pasta_destino)
   renderPdf(arquivoPandoc, profile, pasta_destino)
 }

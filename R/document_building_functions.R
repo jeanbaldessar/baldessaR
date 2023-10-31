@@ -58,13 +58,51 @@ replaceList <- function(texto, substituicoes){
   return(texto)
 }
 
+removeRedundantRelativePath <- function(content){
+  # Caso tenha adicionado um item de uma subpasta, é possível que exita uma referencia do tipo PASTA1/../PASTA2.
+  # Isso deve ser substituído por PASTA2
+  substituido <- str_replace_all(content, "\\[(.+?)\\]\\((.*?/)?[\\w ]*?/../(.*?)\\.md\\)", "[\\1](\\2\\3.md)")
+  while(substituido != content){
+    content <- substituido
+    substituido <- str_replace_all(content, "\\[(.+?)\\]\\((.*?/)?[\\w ]*?/../(.*?)\\.md\\)", "[\\1](\\2\\3.md)")
+  }
+  return(content)
+}
+
+fixRelativePath <- function(res){
+  # procura links com caminho relativo que comece com ..
+  linksLocais   <- str_extract_all(res,  "\\[([\\w%/._(),‘’'+ -]+?)\\]\\((\\.\\.[\\w%/._(),‘’'+-]*?\\.md\\))") %>% unlist
+  if (!is.null(linksLocais) & length(linksLocais)>0){
+    local <-  paste0(tools::file_path_as_absolute("."), "/")
+    for(row in 1:length(linksLocais)){
+      link <- linksLocais[row]
+      wrongRelative   <- markdownLinkFilePath(link)
+      tryCatch({
+        absolut <- tools::file_path_as_absolute(wrongRelative)
+      }, error = function(e){
+        stop(paste0("Erro ao tentar converter arquivo ", wrongRelative, " do link '", link, "' com lista de links ", linksLocais), e)
+      })
+      if(stri_startswith_fixed(absolut, local)){
+        relative <- str_replace_all(absolut, local, '')
+        res <- str_replace_all(res, wrongRelative, relative)
+      }
+    }
+  }
+  return(res)
+}
+
+markdownLinkFilePath <- function(link){
+  #gsub("%20", " ",gsub("\\[[\\w%/._(),‘’'+ -]+?\\]\\(([\\w%/._(),‘’'+-]*?\\.md)\\)", "\\1", link))
+  gsub("%20", " ",gsub("\\[.+?\\]\\((.*?\\.md)\\)", "\\1", link))
+}
+
 
 # inclui arquivo corrigindo referências
 includeFileSession <- function(filename, nivel=1, titulo, sessoes, substituicoesLinks=NULL, substituicoesGeral=NULL){
 
-  linksExternos <- list()
-  linksLocais <- list()
-  linksLocaisQuebrados <- list()
+  linksExternos <- c()
+  linksLocais <- c()
+  linksLocaisQuebrados <- c()
   referenciasEncontradas <- list()
   textoGerado <- ""
 
@@ -97,14 +135,8 @@ includeFileSession <- function(filename, nivel=1, titulo, sessoes, substituicoes
 
     }
 
-    # Caso tenha adicionado um item de uma subpasta, é possível que exita uma referencia do tipo PASTA1/../PASTA2.
-    # Isso deve ser substituído por PASTA2
-    res <- str_replace_all(res, "\\[(.+?)\\]\\((.*?/)?\\w*?/../(.*?)\\.md\\)", paste0("[\\1](\\2\\3.md)"))
-    res <- str_replace_all(res, "\\[(.+?)\\]\\((.*?/)?\\w*?/../(.*?)\\.md\\)", paste0("[\\1](\\2\\3.md)"))
-    res <- str_replace_all(res, "\\[(.+?)\\]\\((.*?/)?\\w*?/../(.*?)\\.md\\)", paste0("[\\1](\\2\\3.md)"))
-
-
-
+    res <- removeRedundantRelativePath(res)
+    res <- fixRelativePath(res)
 
     # altera links locais para sessões que foram incluídas na lista de sessões
     susbstituicoesSessoes <- replaceSessionLinks(res, sessoes$arquivo %>% unlist)
@@ -116,12 +148,12 @@ includeFileSession <- function(filename, nivel=1, titulo, sessoes, substituicoes
     res <- replaceList(res, substituicoesGeral)
 
     # extrai links que não foram substituídos para conferência
-    linksExternos <- Filter(length, append(list(), str_extract_all(res,  "\\[([\\w%/._(),‘’'+ -]+?)\\]\\((https://|http://|www)[\\w%/.-]*?\\)")))
-    linksLocais   <- Filter(length, append(list(), str_extract_all(res,  "\\[([\\w%/._(),‘’'+ -]+?)\\]\\([\\w%/._(),‘’'+-]*?\\.md\\)")))
+    linksExternos <- str_extract_all(res,  "\\[([\\w%/._(),‘’'+ -]+?)\\]\\((https://|http://|www)[\\w%/.-]*?\\)") %>% unlist
+    linksLocais   <- str_extract_all(res,  "\\[([\\w%/._(),‘’'+ -]+?)\\]\\([\\w%/._(),‘’'+-]*?\\.md\\)") %>% unlist
 
-    if(length(linksLocais)>0){
-      links_existentes 		<- linksLocais[ sapply(gsub("%20", " ",gsub("\\[[\\w%/._(),‘’'+ -]+?\\]\\(([\\w%/._(),‘’'+-]*?\\.md)\\)", "\\1", linksLocais)), file.exists)]
-      links_nao_existentes 	<- linksLocais[!sapply(gsub("%20", " ",gsub("\\[[\\w%/._(),‘’'+ -]+?\\]\\(([\\w%/._(),‘’'+-]*?\\.md)\\)", "\\1", linksLocais)), file.exists)]
+    if(!is.null(linksLocais)){
+      links_existentes 		  <- linksLocais[ markdownLinkFilePath(linksLocais) %>%  file.exists]
+      links_nao_existentes 	<- linksLocais[!markdownLinkFilePath(linksLocais) %>%  file.exists]
 
       # browser()
       linksLocais <- links_existentes
@@ -141,13 +173,19 @@ includeFileSession <- function(filename, nivel=1, titulo, sessoes, substituicoes
     textoArquivo <- paste0(res, collapse = "\n")
     textoGerado <- paste0(textoTitulo, textoArquivo, collapse = "")
   }
-  return(list(textoGerado=textoGerado, linksExternos=linksExternos, linksLocais=linksLocais, linksLocaisQuebrados=linksLocaisQuebrados, referenciasEncontradas=referenciasEncontradas))
+  return(list(textoGerado=textoGerado,
+              linksExternos=linksExternos,
+              linksLocais=linksLocais,
+              linksLocaisQuebrados=linksLocaisQuebrados,
+              referenciasEncontradas=referenciasEncontradas))
 }
 
 #' Monta documentos
 #' @export
 
 buildDocument <- function(sessoes, substituicoesLinks=NULL, substituicoesGeral=NULL){
+
+  #browser()
 
   # Essa estrutura será retornada para verificação das referências
   sessoesRetornadas <- sessoes %>% filter(nivel==-1) %>%
@@ -156,9 +194,9 @@ buildDocument <- function(sessoes, substituicoesLinks=NULL, substituicoesGeral=N
 
 
   # Links que não foram substituídos para verificação
-  linksExternos <- list()
-  linksLocais <- list()
-  linksLocaisQuebrados <- list()
+  linksExternos <- c()
+  linksLocais <- c()
+  linksLocaisQuebrados <- c()
 
 
   # incluí todos os arquivos da lista fazendo todas as substituições necessárias
@@ -179,9 +217,9 @@ buildDocument <- function(sessoes, substituicoesLinks=NULL, substituicoesGeral=N
         )
       )
 
-    linksExternos         <- Filter(length, append(linksExternos         , retorno$linksExternos       ))
-    linksLocais           <- Filter(length, append(linksLocais           , retorno$linksLocais         ))
-    linksLocaisQuebrados  <- Filter(length, append(linksLocaisQuebrados  , retorno$linksLocaisQuebrados))
+    linksExternos         <- c(linksExternos         , retorno$linksExternos       )
+    linksLocais           <- c(linksLocais           , retorno$linksLocais         )
+    linksLocaisQuebrados  <- c(linksLocaisQuebrados  , retorno$linksLocaisQuebrados)
   }
 
   return(list(sessoes=sessoesRetornadas, linksExternos=linksExternos, linksLocais=linksLocais, linksLocaisQuebrados=linksLocaisQuebrados))
