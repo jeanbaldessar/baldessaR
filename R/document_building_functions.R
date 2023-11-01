@@ -165,8 +165,15 @@ includeFileSession <- function(filename, nivel=1, titulo, sessoes, substituicoes
 
     # A referência para a sessão é baseada no nome do arquivo, não no título
     referenciaSessao <- convertToPandocSessionIdentifier(filename)
+
     # imprime título com nível configurado
-    textoTitulo <- paste0("\n\n", paste0(rep("#",nivel), collapse = ""), " ", titulo, " {#", referenciaSessao,"}\n\n", collapse = "")
+    if (titulo == ""){
+      textoTitulo <- "\n\n"
+    }else{
+      textoTitulo <- paste0("\n\n", paste0(rep("#",nivel), collapse = ""), " ", titulo, " {#", referenciaSessao,"}\n\n", collapse = "")
+    }
+
+
     # imprime conteúdo com adaptações
     # cat("\nPasta:", pasta, "\n", sep = '\n')
 
@@ -247,32 +254,39 @@ rm(teste)
     interpreted <- knitr::knit_child(text = plantuml, envir = environment(), quiet = TRUE)
     cat(interpreted)
 
-    arquivoAtual <- imprimir$arquivo[row]
-    arquivoAtualEscapacdo <- escapeEspaces(arquivoAtual)
 
-    teste <- referencias %>%
-      filter(!arquivo %in% ignoraReferenciasDe) %>%  # removendo sessões de índices
-      filter(grepl(paste0(escapeRegexp(arquivoAtualEscapacdo),".md"), referencias ))
+    titulo <- imprimir$titulo[row]
 
-    teste <- teste %>%
-      arrange(coalesce(paste0(titulo), paste0(extractFileName(arquivo))))
+    if (titulo!="") {
+      # só imprime referências se o título for preenchido
+      arquivoAtual <- imprimir$arquivo[row]
+      arquivoAtualEscapacdo <- escapeEspaces(arquivoAtual)
 
-    if(nrow(teste)>0){
+      teste <- referencias %>%
+        filter(!arquivo %in% ignoraReferenciasDe) %>%  # removendo sessões de índices
+        filter(grepl(paste0(escapeRegexp(arquivoAtualEscapacdo),".md"), referencias ))
 
-      cat("\n\n\nReferenciado por:\n\n")
+      teste <- teste %>%
+        arrange(coalesce(paste0(titulo), paste0(extractFileName(arquivo))))
 
-      for (row2 in 1:nrow(teste)) {
-        arquivo2 <- unlist(teste$arquivo[row2])
-        titulo2 <- unlist(teste$titulo[row2])
+      if(nrow(teste)>0){
 
-        if(is.null(titulo2)){
-          titulo2 <- extractFileName(arquivo2)
+        cat("\n\n\nReferenciado por:\n\n")
+
+        for (row2 in 1:nrow(teste)) {
+          arquivo2 <- unlist(teste$arquivo[row2])
+          titulo2 <- unlist(teste$titulo[row2])
+
+          if(is.null(titulo2)){
+            titulo2 <- extractFileName(arquivo2)
+          }
+
+          cat("- [",titulo2, "](#",arquivo2 %>% convertToPandocSessionIdentifier(),")\n", sep = "")
+
         }
-
-        cat("- [",titulo2, "](#",arquivo2 %>% convertToPandocSessionIdentifier(),")\n", sep = "")
-
+        cat("\n\n\n")
       }
-      cat("\n\n\n")
     }
+
   }
 }
