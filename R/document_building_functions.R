@@ -281,7 +281,7 @@ rm(teste)
             titulo2 <- extractFileName(arquivo2)
           }
 
-          cat("- [",titulo2, "](#",arquivo2 %>% convertToPandocSessionIdentifier(),")\n", sep = "")
+          cat("- \\@ref(",convertToPandocSessionIdentifier(arquivo2),") [- ",titulo2, "](#",arquivo2 %>% convertToPandocSessionIdentifier(),")\n", sep = "")
 
         }
         cat("\n\n\n")
