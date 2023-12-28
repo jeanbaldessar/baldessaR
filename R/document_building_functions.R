@@ -239,27 +239,43 @@ buildDocument <- function(sessoes, substituicoesLinks=NULL, substituicoesGeral=N
 printWithBacklinks <- function(imprimir, referencias, ignoraReferenciasDe){
   for (row in 1:nrow(imprimir)) {
     texto_gerado <- imprimir$textoGerado[row]
+    arquivoAtual <- imprimir$arquivo[row] %>% unlist()
 
-    plantuml <- str_replace_all(texto_gerado,
-                                regex("```plantuml(.*?)```", dotall = TRUE),
-                                paste0("```{r echo=FALSE, message=FALSE, warning=FALSE, crop = TRUE}
+    # browser()
+    if (!(arquivoAtual %>% is.null())){
+      diretorio <- getwd()
+      diretorioArquivo <- paste0(diretorio, "/",  dirname(arquivoAtual))
+      knitr::opts_knit$set(root.dir = diretorioArquivo)
+      setwd(diretorioArquivo)
+
+      plantuml <- str_replace_all(texto_gerado,
+                                  regex("```plantuml(.*?)```", dotall = TRUE),
+                                  paste0("```{r echo=FALSE, message=FALSE, warning=FALSE, crop = TRUE}
 library(plantuml)
 teste <- '\\1' %>%
-  plantuml %>%
-  plot
+plantuml %>%
+plot
 rm(teste)
-```")
-                                )
+```"))
 
-    interpreted <- knitr::knit_child(text = plantuml, envir = environment(), quiet = TRUE)
-    cat(interpreted)
 
+
+      interpreted <- knitr::knit_child(text = plantuml, envir = environment(), quiet = TRUE)
+
+
+      knitr::opts_knit$set(root.dir = diretorio)
+      setwd(diretorio)
+
+      cat(interpreted)
+    }else{
+      cat(texto_gerado)
+    }
 
     titulo <- imprimir$titulo[row]
 
     if (titulo!="") {
       # só imprime referências se o título for preenchido
-      arquivoAtual <- imprimir$arquivo[row]
+
       arquivoAtualEscapacdo <- escapeEspaces(arquivoAtual)
 
       teste <- referencias %>%
