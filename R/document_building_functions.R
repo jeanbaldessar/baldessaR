@@ -123,7 +123,7 @@ includeFileSession <- function(filename, nivel=1, titulo, sessoes, substituicoes
     pasta <- dirname(filename)
 
     # le conteúdo do arquivo
-    res <- readLines(str_c(c(filename, ".md"), collapse = ""), encoding = "UTF-8")
+    res <- readFileLines(str_c(c(filename, ".md"), collapse = ""))
     res <- paste(res, collapse = "\n")
 
 
@@ -232,6 +232,31 @@ buildDocument <- function(sessoes, substituicoesLinks=NULL, substituicoesGeral=N
   return(list(sessoes=sessoesRetornadas, linksExternos=linksExternos, linksLocais=linksLocais, linksLocaisQuebrados=linksLocaisQuebrados))
 
 }
+
+
+#' Chama função readLines, mas dispara erro informativo caso o arquivo não exista
+#' @export
+
+readFileLines <- function(filename){
+  if (!file.exists(filename)){
+    stop(paste0("Arquivo '", filename, ".md' não existe"))
+  }
+  readLines(
+    filename,
+    encoding = "UTF-8")
+}
+
+#' @export
+
+printPartialFileCode <- function(filename, lines){
+  textLines <- readFileLines(filename)
+  extention <- tools::file_ext(filename)
+  cat(
+    "```",extention,"\n",
+    textLines[lines] %>% paste(collapse = "\n")
+   , "\n```")
+}
+
 
 #' Imprime estrutura gerada por montaDocumento incluíndo backlinks
 #' @export
