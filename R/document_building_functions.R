@@ -296,10 +296,11 @@ rm(teste)
       cat(texto_gerado)
     }
 
-    titulo <- imprimir$titulo[row]
 
-    if (titulo!="") {
-      # só imprime referências se o título for preenchido
+    if (!(arquivoAtual %>% is.null())){
+
+      titulo <- imprimir$titulo[row]
+      # só imprime referências se o arquivo existir for preenchido
 
       arquivoAtualEscapacdo <- escapeEspaces(arquivoAtual)
 
