@@ -237,24 +237,28 @@ buildDocument <- function(sessoes, substituicoesLinks=NULL, substituicoesGeral=N
 #' Chama função readLines, mas dispara erro informativo caso o arquivo não exista
 #' @export
 
-readFileLines <- function(filename){
+readFileLines <- function(filename, encoding = "UTF-8"){
   if (!file.exists(filename)){
-    stop(paste0("Arquivo '", filename, ".md' não existe"))
+    stop(paste0("Arquivo '", filename, " não existe no diretório ",getwd()))
   }
   readLines(
     filename,
-    encoding = "UTF-8")
+    encoding = encoding)
 }
 
 #' @export
 
-printPartialFileCode <- function(filename, lines){
-  textLines <- readFileLines(filename)
-  extention <- tools::file_ext(filename)
-  cat(
-    "```",extention,"\n",
-    textLines[lines] %>% paste(collapse = "\n")
-   , "\n```")
+printPartialFileCode <- function(filename, lines, encoding = "UTF-8"){
+  tryCatch({
+    textLines <- readFileLines(filename, encoding)
+    extention <- tools::file_ext(filename)
+    cat(
+      "```",extention,"\n",
+      textLines[lines] %>% paste0(collapse = "\n")
+    , "\n```")
+  }, error = function(e){
+    stop(paste0("Erro ao tentar cortar arquivo ", filename), e)
+  })
 }
 
 
@@ -263,72 +267,85 @@ printPartialFileCode <- function(filename, lines){
 
 printWithBacklinks <- function(imprimir, referencias, ignoraReferenciasDe){
   for (row in 1:nrow(imprimir)) {
-    texto_gerado <- imprimir$textoGerado[row]
-    arquivoAtual <- imprimir$arquivo[row] %>% unlist()
-
-    # browser()
-    if (!(arquivoAtual %>% is.null())){
-      diretorio <- getwd()
-      diretorioArquivo <- paste0(diretorio, "/",  dirname(arquivoAtual))
-      knitr::opts_knit$set(root.dir = diretorioArquivo)
-      setwd(diretorioArquivo)
-
-      plantuml <- str_replace_all(texto_gerado,
-                                  regex("```plantuml(.*?)```", dotall = TRUE),
-                                  paste0("```{r echo=FALSE, message=FALSE, warning=FALSE, crop = TRUE}
+    tryCatch({
+      texto_gerado <- imprimir$textoGerado[row]
+      arquivoAtual <- imprimir$arquivo[row] %>% unlist()
+  
+      # browser()
+      if (!(arquivoAtual %>% is.null())){
+        if(grepl('```plantuml|```\\{r|`r', texto_gerado)){
+            # adiciona interpretacao do planuml
+            diretorio <- getwd()
+            diretorioArquivo <- paste0(diretorio, "/",  dirname(arquivoAtual))
+            knitr::opts_knit$set(root.dir = diretorioArquivo)
+            setwd(diretorioArquivo)
+            convertido <- str_replace_all(texto_gerado,
+                                        regex("```plantuml(.*?)```", dotall = TRUE),
+                                        paste0("```{r echo=FALSE, message=FALSE, warning=FALSE, crop = TRUE}
 library(plantuml)
 teste <- '\\1' %>%
 plantuml %>%
 plot
 rm(teste)
 ```"))
-
-
-
-      interpreted <- knitr::knit_child(text = plantuml, envir = environment(), quiet = TRUE)
-
-
-      knitr::opts_knit$set(root.dir = diretorio)
-      setwd(diretorio)
-
-      cat(interpreted)
-    }else{
-      cat(texto_gerado)
-    }
-
-
-    if (!(arquivoAtual %>% is.null())){
-
-      titulo <- imprimir$titulo[row]
-      # só imprime referências se o arquivo existir for preenchido
-
-      arquivoAtualEscapacdo <- escapeEspaces(arquivoAtual)
-
-      teste <- referencias %>%
-        filter(!arquivo %in% ignoraReferenciasDe) %>%  # removendo sessões de índices
-        filter(grepl(paste0(escapeRegexp(arquivoAtualEscapacdo),".md"), referencias ))
-
-      teste <- teste %>%
-        arrange(coalesce(paste0(titulo), paste0(extractFileName(arquivo))))
-
-      if(nrow(teste)>0){
-
-        cat("\n\n\nReferenciado por:\n\n")
-
-        for (row2 in 1:nrow(teste)) {
-          arquivo2 <- unlist(teste$arquivo[row2])
-          titulo2 <- unlist(teste$titulo[row2])
-
-          if(is.null(titulo2)){
-            titulo2 <- extractFileName(arquivo2)
-          }
-
-          cat("- \\@ref(",convertToPandocSessionIdentifier(arquivo2),") [- ",titulo2, "](#",arquivo2 %>% convertToPandocSessionIdentifier(),")\n", sep = "")
-
+            
+            tryCatch({            
+              interpreted <- knitr::knit_child(text = convertido, envir = environment(), quiet = TRUE)
+            }, error = function(e){
+              # voltando diretorio mesmo se der erro
+              knitr::opts_knit$set(root.dir = diretorio)
+              setwd(diretorio) 
+              stop(paste0("Erro ao tentar interpretar texto: ", convertido, "\ndiretorio de trabalho: ", diretorioArquivo), e)
+            })  
+            
+            # voltando diretorio
+            knitr::opts_knit$set(root.dir = diretorio)
+            setwd(diretorio) 
+            
+            cat(interpreted)
+            
+        }else{
+          cat(texto_gerado)
         }
-        cat("\n\n\n")
+      }else{
+        cat(texto_gerado)
       }
-    }
-
+  
+  
+      if (!(arquivoAtual %>% is.null())){
+  
+        titulo <- imprimir$titulo[row]
+        # só imprime referências se o arquivo existir for preenchido
+  
+        arquivoAtualEscapacdo <- escapeEspaces(arquivoAtual)
+  
+        teste <- referencias %>%
+          filter(!arquivo %in% ignoraReferenciasDe) %>%  # removendo sessões de índices
+          filter(grepl(paste0(escapeRegexp(arquivoAtualEscapacdo),".md"), referencias ))
+  
+        teste <- teste %>%
+          arrange(coalesce(paste0(titulo), paste0(extractFileName(arquivo))))
+  
+        if(nrow(teste)>0){
+  
+          cat("\n\n\nReferenciado por:\n\n")
+  
+          for (row2 in 1:nrow(teste)) {
+            arquivo2 <- unlist(teste$arquivo[row2])
+            titulo2 <- unlist(teste$titulo[row2])
+  
+            if(is.null(titulo2)){
+              titulo2 <- extractFileName(arquivo2)
+            }
+  
+            cat("- \\@ref(",convertToPandocSessionIdentifier(arquivo2),") [- ",titulo2, "](#",arquivo2 %>% convertToPandocSessionIdentifier(),")\n", sep = "")
+  
+          }
+          cat("\n\n\n")
+        }
+      }
+    }, error = function(e){
+      stop(paste0("Erro ao tentar incluir arquivo ", arquivoAtual), e)
+    })
   }
 }

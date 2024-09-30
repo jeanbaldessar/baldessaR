@@ -1,15 +1,18 @@
 #' @export
-renderAll <- function(arquivoPandoc=NULL, profile='complete', pasta_destino='build'){
-  if (is.null(arquivoPandoc)){
-    arquivoPandoc <- stringr::str_replace_all(list.files(pattern = "*.Rmd"), ".Rmd$", "")
+renderAll <- function(arquivo=NULL, profile='complete', pasta_destino='build'){
+  if (is.null(arquivo)){
+    arquivo <- stringr::str_replace_all(list.files(pattern = "*.Rmd"), ".Rmd$", "")
   }
-  renderLight(arquivoPandoc, profile, pasta_destino)
-  renderPdf(arquivoPandoc, profile, pasta_destino)
+  renderLight(arquivo, profile, pasta_destino)
+  renderPdf(arquivo, profile, pasta_destino)
 }
 
 #' @export
-renderLight <- function(arquivo, profile='complete', pasta_destino='build'){
+renderLight <- function(arquivo=NULL, profile='complete', pasta_destino='build'){
   library(rmarkdown)
+  if (is.null(arquivo)){
+    arquivo <- stringr::str_replace_all(list.files(pattern = "*.Rmd"), ".Rmd$", "")
+  }
 
   fonte <- paste0(arquivo, '.Rmd')
   destino <- paste0(arquivo)
@@ -42,7 +45,11 @@ renderLight <- function(arquivo, profile='complete', pasta_destino='build'){
 #' @export
 # Método feito para facilitar a renderização de um documento para pdf por linha de comando
 # Este método chama rmarkdown::render com o formato bookdown::pdf_book o salva os documentos resultantes em uma pasta padrão
-renderPdf <- function(arquivo, profile='complete', pasta_destino='build'){
+renderPdf <- function(arquivo=NULL, profile='complete', pasta_destino='build'){
+  if (is.null(arquivo)){
+    arquivo <- stringr::str_replace_all(list.files(pattern = "*.Rmd"), ".Rmd$", "")
+  }
+
   fonte <- paste0(arquivo, '.Rmd')
   destino <- paste0(arquivo, '.pdf')
   diretorio_destino <- paste0(pasta_destino,'/',profile)

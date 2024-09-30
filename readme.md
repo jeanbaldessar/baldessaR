@@ -20,6 +20,12 @@ setwd(tmpDir)
 rm(tmpDir)
 ```
 
+Depois te já ter instalado a package uma vez, é possível atualizar com o comando simplicicado abaixo:
+
+```r
+baldessaR::installUpdatedBaldessaR()
+```
+
 Depois de instalar a biblioteca você pode fazer um build de um arquivo Rmd através do comando abaixo:
 
 ```r

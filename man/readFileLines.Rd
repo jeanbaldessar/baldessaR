@@ -4,7 +4,7 @@
 \alias{readFileLines}
 \title{Chama função readLines, mas dispara erro informativo caso o arquivo não exista}
 \usage{
-readFileLines(filename)
+readFileLines(filename, encoding = "UTF-8")
 }
 \description{
 Chama função readLines, mas dispara erro informativo caso o arquivo não exista
